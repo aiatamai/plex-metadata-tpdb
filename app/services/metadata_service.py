@@ -5,6 +5,7 @@ from typing import Any, Optional
 import structlog
 
 from app.clients.tpdb_client import TPDBClient, TPDBNotFoundError, get_tpdb_client
+from app.config import get_settings
 from app.constants import MOVIE_PROVIDER_IDENTIFIER, TV_PROVIDER_IDENTIFIER
 from app.mappers.movie_mapper import MovieMapper
 from app.mappers.show_mapper import ShowMapper
@@ -235,24 +236,76 @@ class MetadataService:
             return None
 
     async def _get_site_years(self, site_slug: str) -> list[int]:
-        """Get available years for a site."""
+        """Get available years for a site by paginating through scenes."""
         cache = self._get_cache()
         client = await self._get_client()
+        settings = get_settings()
 
         async def fetch() -> list[int]:
-            # Fetch first page to get an idea of date range
-            # In a real implementation, you might want to paginate through all scenes
-            response = await client.get_site_scenes(site_slug, page=1, per_page=100)
-            scenes = response.get("data", [])
             years = set()
-            for scene in scenes:
-                date_str = scene.get("date")
-                if date_str and len(date_str) >= 4:
-                    try:
-                        years.add(int(date_str[:4]))
-                    except ValueError:
-                        pass
-            return list(years) if years else [2024]
+            page = 1
+            max_pages = settings.tpdb_max_pages_for_years
+
+            logger.debug(
+                "Fetching site years",
+                site_slug=site_slug,
+                max_pages=max_pages if max_pages > 0 else "unlimited",
+            )
+
+            while True:
+                # Fetch scenes page by page
+                response = await client.get_site_scenes(site_slug, page=page, per_page=100)
+                scenes = response.get("data", [])
+
+                # Extract years from scenes
+                for scene in scenes:
+                    date_str = scene.get("date")
+                    if date_str and len(date_str) >= 4:
+                        year_str = date_str[:4]
+                        if year_str.isdigit():
+                            years.add(int(year_str))
+
+                # Check if we should continue paginating
+                # Stop if: no more scenes, reached max pages, or no pagination info
+                if not scenes:
+                    break
+
+                # Check pagination metadata (if available)
+                meta = response.get("meta", {})
+                current_page = meta.get("current_page", page)
+                last_page = meta.get("last_page")
+
+                logger.debug(
+                    "Fetched page",
+                    page=current_page,
+                    scenes_count=len(scenes),
+                    years_found=len(years),
+                    last_page=last_page,
+                )
+
+                # Stop if we've reached the last page
+                if last_page and current_page >= last_page:
+                    break
+
+                # Stop if we've reached max_pages limit (0 = unlimited)
+                if max_pages > 0 and page >= max_pages:
+                    logger.debug(
+                        "Reached max pages limit",
+                        max_pages=max_pages,
+                        years_found=len(years),
+                    )
+                    break
+
+                page += 1
+
+            result = sorted(years, reverse=True) if years else [2024]
+            logger.info(
+                "Site years fetched",
+                site_slug=site_slug,
+                years_count=len(result),
+                pages_fetched=page,
+            )
+            return result
 
         return await cache.get_or_fetch(
             "site_years",
