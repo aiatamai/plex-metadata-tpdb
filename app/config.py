@@ -64,6 +64,10 @@ class Settings(BaseSettings):
     tpdb_base_url: str = "https://api.theporndb.net"
     # Rate limit for outgoing requests to TPDB (respect their limits)
     tpdb_rate_limit: float = 2.0  # requests per second (max 2 requests/sec)
+    # Maximum number of pages to fetch when discovering site years
+    # Higher value = more complete year coverage but more API calls
+    # Set to 0 for unlimited (fetches all pages)
+    tpdb_max_pages_for_years: int = 10  # Fetch up to 10 pages (1000 scenes) by default
 
     # ===== CACHE TIME-TO-LIVE (TTL) SETTINGS =====
     # How long to cache different types of responses (in seconds)
