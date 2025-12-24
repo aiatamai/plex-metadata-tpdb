@@ -1,6 +1,6 @@
 # Admin Dashboard Search Fix
 
-## Problem
+### Problem
 
 The search function in the admin dashboard was not working. When users tried to search for content, they would get an error:
 ```
