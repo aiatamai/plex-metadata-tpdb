@@ -79,7 +79,7 @@ dmypy.json
 *.db
 *.sqlite
 *.sqlite3
-data/*
+data/
 
 # Logs
 *.log
