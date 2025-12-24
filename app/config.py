@@ -9,6 +9,7 @@ and coercion (e.g., "true" string -> bool True).
 from functools import lru_cache
 from typing import Optional
 
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -57,8 +58,8 @@ class Settings(BaseSettings):
     redis_url: Optional[str] = None
 
     # ===== THEPORNDB API SETTINGS =====
-    # API key from https://theporndb.net (required)
-    tpdb_api_key: str = ""
+    # API key from https://theporndb.net (required - must be set)
+    tpdb_api_key: str
     # Base URL for ThePornDB API
     tpdb_base_url: str = "https://api.theporndb.net"
     # Rate limit for outgoing requests to TPDB (respect their limits)
@@ -81,8 +82,53 @@ class Settings(BaseSettings):
 
     # ===== ADMIN AUTHENTICATION =====
     # Credentials for accessing the admin dashboard
+    # Both must be configured via environment variables for security
     admin_username: str = "admin"
-    admin_password: str = "change_me_in_production"  # CHANGE THIS IN PRODUCTION!
+    admin_password: str  # Required - must be set via ADMIN_PASSWORD env var
+
+    @field_validator("tpdb_api_key")
+    @classmethod
+    def validate_tpdb_api_key(cls, v: str) -> str:
+        """Ensure TPDB API key is configured.
+
+        Args:
+            v: The TPDB API key value
+
+        Returns:
+            The validated API key
+
+        Raises:
+            ValueError: If API key is empty
+        """
+        if not v or not v.strip():
+            raise ValueError(
+                "TPDB_API_KEY environment variable must be set. "
+                "Get your API key from https://theporndb.net"
+            )
+        return v
+
+    @field_validator("admin_password")
+    @classmethod
+    def validate_admin_password(cls, v: str) -> str:
+        """Ensure admin password is not the insecure default.
+
+        Args:
+            v: The admin password value
+
+        Returns:
+            The validated password
+
+        Raises:
+            ValueError: If password is empty or is the insecure default
+        """
+        if not v or not v.strip():
+            raise ValueError("ADMIN_PASSWORD environment variable must be set")
+        if v == "change_me_in_production":
+            raise ValueError(
+                "ADMIN_PASSWORD cannot use the default insecure value. "
+                "Please set a strong password via the ADMIN_PASSWORD environment variable."
+            )
+        return v
 
     @property
     def is_redis_configured(self) -> bool:

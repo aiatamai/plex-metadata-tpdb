@@ -10,7 +10,7 @@ Handles:
 from typing import Any, Optional
 
 import structlog
-from fastapi import APIRouter, Depends, Header, Query, Request
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request, status
 
 from app.constants import TV_PROVIDER_IDENTIFIER, MetadataType
 from app.models.plex import (
@@ -55,9 +55,32 @@ async def match_content(
         x_plex_country: Country code from Plex
         match_service: Injected match service
     """
-    # Parse the request body
-    body = await request.json()
-    match_request = MatchRequest(**body)
+    # Parse the request body with error handling
+    try:
+        body = await request.json()
+    except ValueError as e:
+        logger.error("Invalid JSON in match request", error=str(e))
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid JSON in request body",
+        )
+
+    # Validate request structure
+    if not isinstance(body, dict):
+        logger.error("Match request body is not a dictionary", body_type=type(body).__name__)
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Request body must be a JSON object",
+        )
+
+    try:
+        match_request = MatchRequest(**body)
+    except (ValueError, TypeError) as e:
+        logger.error("Invalid match request parameters", error=str(e))
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Invalid request parameters: {str(e)}",
+        )
 
     logger.info(
         "Match request received",

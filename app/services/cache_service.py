@@ -2,7 +2,7 @@
 
 import hashlib
 import json
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any, Callable, Optional, TypeVar
 
 import structlog
@@ -87,7 +87,7 @@ class CacheService:
         # Check memory cache first
         if cache_key in self._memory_cache:
             value, expires_at = self._memory_cache[cache_key]
-            if datetime.utcnow() < expires_at:
+            if datetime.now(timezone.utc) < expires_at:
                 logger.debug("Memory cache hit", key=cache_key, endpoint=endpoint)
                 return value
             else:
@@ -110,7 +110,7 @@ class CacheService:
                 ttl = self._get_ttl(endpoint)
                 self._memory_cache[cache_key] = (
                     entry.response_data,
-                    datetime.utcnow() + timedelta(seconds=min(ttl, 300)),
+                    datetime.now(timezone.utc) + timedelta(seconds=min(ttl, 300)),
                 )
                 return entry.response_data
 
@@ -134,13 +134,13 @@ class CacheService:
         """
         cache_key = self._make_key(endpoint, params)
         ttl = ttl or self._get_ttl(endpoint)
-        expires_at = datetime.utcnow() + timedelta(seconds=ttl)
+        expires_at = datetime.now(timezone.utc) + timedelta(seconds=ttl)
 
         # Store in memory cache (shorter TTL for memory)
         memory_ttl = min(ttl, 300)
         self._memory_cache[cache_key] = (
             value,
-            datetime.utcnow() + timedelta(seconds=memory_ttl),
+            datetime.now(timezone.utc) + timedelta(seconds=memory_ttl),
         )
 
         # Store in database cache
@@ -235,7 +235,7 @@ class CacheService:
             Number of entries cleared
         """
         # Clear expired from memory
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         expired_keys = [
             k for k, (_, exp) in self._memory_cache.items() if exp < now
         ]
