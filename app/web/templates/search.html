@@ -101,19 +101,23 @@ function searchApp() {
             this.searched = true;
 
             try {
-                // This would call your API endpoint
-                // For now, we'll show a placeholder
-                const response = await fetch(`/api/v1/${this.searchType}?q=${encodeURIComponent(this.query)}`);
+                // Call the admin search API endpoint
+                // The endpoint handles auth via HTTP Basic credentials
+                const response = await fetch(
+                    `/admin/api/search?q=${encodeURIComponent(this.query)}&type=${encodeURIComponent(this.searchType)}`
+                );
 
                 if (!response.ok) {
-                    throw new Error('Search failed');
+                    const errorData = await response.json();
+                    throw new Error(errorData.detail || 'Search failed');
                 }
 
                 const data = await response.json();
                 this.results = data.data || [];
             } catch (e) {
-                this.error = 'Failed to search. Please check your API configuration.';
+                this.error = `Search error: ${e.message}`;
                 this.results = [];
+                console.error('Search error:', e);
             } finally {
                 this.loading = false;
             }
