@@ -43,6 +43,134 @@ class MatchService:
             self._cache_service = get_cache_service()
         return self._cache_service
 
+    async def _search_sites_cached(
+        self,
+        query: str,
+        per_page: int = 10,
+    ) -> dict[str, Any]:
+        """Search for sites with caching.
+
+        This is heavily cached since site names don't change and
+        the same sites are searched repeatedly during library scans.
+
+        Args:
+            query: Search query (site name)
+            per_page: Results per page
+
+        Returns:
+            TPDB search response with site data
+        """
+        cache = self._get_cache()
+        client = await self._get_client()
+
+        async def fetch() -> dict[str, Any]:
+            return await client.search_sites(q=query, per_page=per_page)
+
+        return await cache.get_or_fetch(
+            "site_search",
+            {"q": query, "per_page": per_page},
+            fetch,
+            ttl=86400,  # 24 hours - site names rarely change
+        )
+
+    async def _search_scenes_cached(
+        self,
+        q: Optional[str] = None,
+        site: Optional[str] = None,
+        performer: Optional[str] = None,
+        date: Optional[str] = None,
+        per_page: int = 25,
+    ) -> dict[str, Any]:
+        """Search for scenes with caching.
+
+        Scene search results are cached for 5 minutes to speed up
+        repeated searches during library scans while keeping results fresh.
+
+        Args:
+            q: Search query
+            site: Filter by site slug
+            performer: Filter by performer name
+            date: Filter by date (YYYY-MM-DD)
+            per_page: Results per page
+
+        Returns:
+            TPDB search response with scene data
+        """
+        cache = self._get_cache()
+        client = await self._get_client()
+
+        async def fetch() -> dict[str, Any]:
+            return await client.search_scenes(
+                q=q,
+                site=site,
+                performer=performer,
+                date=date,
+                page=1,
+                per_page=per_page,
+            )
+
+        # Build cache params (only include non-None values)
+        cache_params = {"per_page": per_page}
+        if q:
+            cache_params["q"] = q
+        if site:
+            cache_params["site"] = site
+        if performer:
+            cache_params["performer"] = performer
+        if date:
+            cache_params["date"] = date
+
+        return await cache.get_or_fetch(
+            "scene_search",
+            cache_params,
+            fetch,
+            ttl=300,  # 5 minutes - balance freshness with performance
+        )
+
+    async def _search_movies_cached(
+        self,
+        q: Optional[str] = None,
+        year: Optional[int] = None,
+        per_page: int = 25,
+    ) -> dict[str, Any]:
+        """Search for movies with caching.
+
+        Movie search results are cached for 5 minutes to speed up
+        repeated searches during library scans.
+
+        Args:
+            q: Search query
+            year: Filter by year
+            per_page: Results per page
+
+        Returns:
+            TPDB search response with movie data
+        """
+        cache = self._get_cache()
+        client = await self._get_client()
+
+        async def fetch() -> dict[str, Any]:
+            return await client.search_movies(
+                q=q,
+                year=year,
+                page=1,
+                per_page=per_page,
+            )
+
+        # Build cache params (only include non-None values)
+        cache_params = {"per_page": per_page}
+        if q:
+            cache_params["q"] = q
+        if year:
+            cache_params["year"] = year
+
+        return await cache.get_or_fetch(
+            "movie_search",
+            cache_params,
+            fetch,
+            ttl=300,  # 5 minutes - balance freshness with performance
+        )
+
     async def match_show(
         self,
         request: MatchRequest,
@@ -75,7 +203,7 @@ class MatchService:
 
         # Search by title if no GUID match
         if not metadata and request.title:
-            response = await client.search_sites(q=request.title, per_page=10)
+            response = await self._search_sites_cached(query=request.title, per_page=10)
             for site_data in response.get("data", []):
                 metadata.append(ShowMapper.site_to_show(site_data))
 
@@ -113,8 +241,10 @@ class MatchService:
 
         # Get the show (site) first
         if request.grandparentTitle:
-            client = await self._get_client()
-            response = await client.search_sites(q=request.grandparentTitle, per_page=1)
+            response = await self._search_sites_cached(
+                query=request.grandparentTitle,
+                per_page=1,
+            )
             sites = response.get("data", [])
 
             if sites:
@@ -159,7 +289,6 @@ class MatchService:
         )
 
         metadata: list[MetadataItem] = []
-        client = await self._get_client()
 
         # Search by title and optionally filter by site
         search_params: dict[str, Any] = {"per_page": 10}
@@ -168,8 +297,11 @@ class MatchService:
             search_params["q"] = request.title
 
         if request.grandparentTitle:
-            # Try to find the site first
-            site_response = await client.search_sites(q=request.grandparentTitle, per_page=1)
+            # Try to find the site first (cached!)
+            site_response = await self._search_sites_cached(
+                query=request.grandparentTitle,
+                per_page=1,
+            )
             sites = site_response.get("data", [])
             if sites:
                 search_params["site"] = sites[0].get("slug") or sites[0].get("id")
@@ -177,8 +309,8 @@ class MatchService:
         if request.date:
             search_params["date"] = request.date
 
-        # Search for scenes
-        response = await client.search_scenes(**search_params)
+        # Search for scenes with caching
+        response = await self._search_scenes_cached(**search_params)
         for idx, scene_data in enumerate(response.get("data", []), start=1):
             metadata.append(ShowMapper.scene_to_episode(scene_data, episode_index=idx))
 
@@ -222,7 +354,7 @@ class MatchService:
 
         # Search by title if no GUID match
         if not metadata and request.title:
-            response = await client.search_movies(
+            response = await self._search_movies_cached(
                 q=request.title,
                 year=request.year,
                 per_page=10,
