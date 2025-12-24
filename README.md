@@ -33,7 +33,7 @@ A Plex Media Provider built with Python/FastAPI that implements the official Ple
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/plex-metadata-tpdb.git
+git clone https://github.com/aiatamai/plex-metadata-tpdb.git
 cd plex-metadata-tpdb
 
 # Create virtual environment
