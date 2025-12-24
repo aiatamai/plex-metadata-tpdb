@@ -1,0 +1,94 @@
+{% extends "base.html" %}
+
+{% block title %}Cache - TPDB Plex Provider{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <h1 class="text-3xl font-bold text-white">Cache Management</h1>
+
+    <!-- Cache Stats -->
+    <div class="bg-gray-800 rounded-lg p-6 border border-gray-700">
+        <h2 class="text-xl font-semibold text-purple-400 mb-4">Cache Statistics</h2>
+        <div class="grid grid-cols-2 md:grid-cols-5 gap-4">
+            <div class="bg-gray-700 rounded p-4 text-center">
+                <p class="text-3xl font-bold text-white">{{ cache_stats.total_entries }}</p>
+                <p class="text-gray-400 text-sm">Total Entries</p>
+            </div>
+            <div class="bg-gray-700 rounded p-4 text-center">
+                <p class="text-3xl font-bold text-green-400">{{ cache_stats.active_entries }}</p>
+                <p class="text-gray-400 text-sm">Active</p>
+            </div>
+            <div class="bg-gray-700 rounded p-4 text-center">
+                <p class="text-3xl font-bold text-yellow-400">{{ cache_stats.expired_entries }}</p>
+                <p class="text-gray-400 text-sm">Expired</p>
+            </div>
+            <div class="bg-gray-700 rounded p-4 text-center">
+                <p class="text-3xl font-bold text-blue-400">{{ cache_stats.total_hits }}</p>
+                <p class="text-gray-400 text-sm">Total Hits</p>
+            </div>
+            <div class="bg-gray-700 rounded p-4 text-center">
+                <p class="text-3xl font-bold text-purple-400">{{ cache_stats.memory_entries }}</p>
+                <p class="text-gray-400 text-sm">In Memory</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- By Endpoint -->
+    <div class="bg-gray-800 rounded-lg p-6 border border-gray-700">
+        <h2 class="text-xl font-semibold text-purple-400 mb-4">Entries by Endpoint</h2>
+        <div class="overflow-x-auto">
+            <table class="w-full text-left">
+                <thead>
+                    <tr class="border-b border-gray-700">
+                        <th class="py-2 px-4 text-gray-400 font-medium">Endpoint</th>
+                        <th class="py-2 px-4 text-gray-400 font-medium">Count</th>
+                        <th class="py-2 px-4 text-gray-400 font-medium">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for endpoint, count in cache_stats.by_endpoint.items() %}
+                    <tr class="border-b border-gray-700">
+                        <td class="py-2 px-4 text-white">{{ endpoint }}</td>
+                        <td class="py-2 px-4 text-white">{{ count }}</td>
+                        <td class="py-2 px-4">
+                            <form action="/admin/cache/clear" method="post" class="inline">
+                                <input type="hidden" name="endpoint" value="{{ endpoint }}">
+                                <button type="submit"
+                                        class="text-red-400 hover:text-red-300 text-sm"
+                                        onclick="return confirm('Clear all {{ endpoint }} cache entries?')">
+                                    Clear
+                                </button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="3" class="py-4 px-4 text-gray-400 text-center">No cache entries</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Actions -->
+    <div class="bg-gray-800 rounded-lg p-6 border border-gray-700">
+        <h2 class="text-xl font-semibold text-purple-400 mb-4">Actions</h2>
+        <div class="flex flex-wrap gap-4">
+            <form action="/admin/cache/clear-expired" method="post">
+                <button type="submit"
+                        class="px-4 py-2 bg-yellow-600 hover:bg-yellow-700 text-white rounded-lg transition">
+                    Clear Expired Entries
+                </button>
+            </form>
+            <form action="/admin/cache/clear" method="post">
+                <button type="submit"
+                        class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition"
+                        onclick="return confirm('This will clear ALL cache entries. Continue?')">
+                    Clear All Cache
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

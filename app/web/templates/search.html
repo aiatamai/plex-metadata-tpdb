@@ -1,0 +1,124 @@
+{% extends "base.html" %}
+
+{% block title %}Search - TPDB Plex Provider{% endblock %}
+
+{% block content %}
+<div class="space-y-6" x-data="searchApp()">
+    <h1 class="text-3xl font-bold text-white">Search TPDB</h1>
+
+    <!-- Search Form -->
+    <div class="bg-gray-800 rounded-lg p-6 border border-gray-700">
+        <div class="flex flex-col md:flex-row gap-4">
+            <div class="flex-1">
+                <label class="block text-sm font-medium text-gray-400 mb-2">Search Query</label>
+                <input type="text"
+                       x-model="query"
+                       @keyup.enter="search()"
+                       placeholder="Enter site, scene, or performer name..."
+                       class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white placeholder-gray-400 focus:outline-none focus:border-purple-500">
+            </div>
+            <div class="w-full md:w-48">
+                <label class="block text-sm font-medium text-gray-400 mb-2">Search Type</label>
+                <select x-model="searchType"
+                        class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-purple-500">
+                    <option value="scenes">Scenes</option>
+                    <option value="sites">Sites</option>
+                    <option value="movies">Movies</option>
+                    <option value="performers">Performers</option>
+                </select>
+            </div>
+            <div class="flex items-end">
+                <button @click="search()"
+                        :disabled="loading"
+                        class="w-full md:w-auto px-6 py-2 bg-purple-600 hover:bg-purple-700 disabled:bg-gray-600 text-white rounded-lg transition">
+                    <span x-show="!loading">Search</span>
+                    <span x-show="loading">Searching...</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Results -->
+    <div x-show="results.length > 0" class="bg-gray-800 rounded-lg p-6 border border-gray-700">
+        <h2 class="text-xl font-semibold text-purple-400 mb-4">
+            Results (<span x-text="results.length"></span>)
+        </h2>
+        <div class="space-y-4">
+            <template x-for="item in results" :key="item.id">
+                <div class="bg-gray-700 rounded-lg p-4 flex gap-4">
+                    <!-- Thumbnail -->
+                    <div class="flex-shrink-0 w-24 h-24 bg-gray-600 rounded overflow-hidden">
+                        <img x-show="item.image || item.poster || item.logo"
+                             :src="item.image || item.poster || item.logo"
+                             :alt="item.title || item.name"
+                             class="w-full h-full object-cover">
+                        <div x-show="!(item.image || item.poster || item.logo)"
+                             class="w-full h-full flex items-center justify-center text-gray-400">
+                            No Image
+                        </div>
+                    </div>
+                    <!-- Info -->
+                    <div class="flex-1 min-w-0">
+                        <h3 class="text-lg font-semibold text-white truncate" x-text="item.title || item.name"></h3>
+                        <p class="text-sm text-gray-400 mt-1" x-show="item.date" x-text="item.date"></p>
+                        <p class="text-sm text-gray-400 mt-1 line-clamp-2" x-text="item.description || item.bio || ''"></p>
+                        <div class="mt-2 flex flex-wrap gap-2">
+                            <span class="px-2 py-1 bg-gray-600 text-xs rounded" x-text="'ID: ' + item.id"></span>
+                            <span x-show="item.site" class="px-2 py-1 bg-purple-900 text-purple-300 text-xs rounded" x-text="item.site?.name || ''"></span>
+                        </div>
+                    </div>
+                </div>
+            </template>
+        </div>
+    </div>
+
+    <!-- No Results -->
+    <div x-show="searched && results.length === 0 && !loading" class="bg-gray-800 rounded-lg p-6 border border-gray-700 text-center">
+        <p class="text-gray-400">No results found for your query.</p>
+    </div>
+
+    <!-- Error -->
+    <div x-show="error" class="bg-red-900 border border-red-700 rounded-lg p-6 text-center">
+        <p class="text-red-300" x-text="error"></p>
+    </div>
+</div>
+
+<script>
+function searchApp() {
+    return {
+        query: '',
+        searchType: 'scenes',
+        results: [],
+        loading: false,
+        searched: false,
+        error: null,
+
+        async search() {
+            if (!this.query.trim()) return;
+
+            this.loading = true;
+            this.error = null;
+            this.searched = true;
+
+            try {
+                // This would call your API endpoint
+                // For now, we'll show a placeholder
+                const response = await fetch(`/api/v1/${this.searchType}?q=${encodeURIComponent(this.query)}`);
+
+                if (!response.ok) {
+                    throw new Error('Search failed');
+                }
+
+                const data = await response.json();
+                this.results = data.data || [];
+            } catch (e) {
+                this.error = 'Failed to search. Please check your API configuration.';
+                this.results = [];
+            } finally {
+                this.loading = false;
+            }
+        }
+    }
+}
+</script>
+{% endblock %}

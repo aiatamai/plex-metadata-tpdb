@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - TPDB Plex Provider{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <h1 class="text-3xl font-bold text-white">Dashboard</h1>
+
+    <!-- Provider Info Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <!-- TV Provider Card -->
+        <div class="bg-gray-800 rounded-lg p-6 border border-gray-700">
+            <div class="flex items-center justify-between">
+                <h2 class="text-xl font-semibold text-purple-400">TV Provider</h2>
+                <span class="px-2 py-1 bg-green-900 text-green-300 text-xs rounded">Active</span>
+            </div>
+            <p class="text-gray-400 mt-2">Sites as Shows, Scenes as Episodes</p>
+            <div class="mt-4 text-sm text-gray-500">
+                <p>Endpoint: <code class="bg-gray-700 px-1 rounded">/tv</code></p>
+                <p class="mt-1">Identifier: <code class="bg-gray-700 px-1 rounded text-xs">tv.plex.agents.tpdb.tv</code></p>
+            </div>
+        </div>
+
+        <!-- Movie Provider Card -->
+        <div class="bg-gray-800 rounded-lg p-6 border border-gray-700">
+            <div class="flex items-center justify-between">
+                <h2 class="text-xl font-semibold text-purple-400">Movie Provider</h2>
+                <span class="px-2 py-1 bg-green-900 text-green-300 text-xs rounded">Active</span>
+            </div>
+            <p class="text-gray-400 mt-2">Full-length Movies from TPDB</p>
+            <div class="mt-4 text-sm text-gray-500">
+                <p>Endpoint: <code class="bg-gray-700 px-1 rounded">/movie</code></p>
+                <p class="mt-1">Identifier: <code class="bg-gray-700 px-1 rounded text-xs">tv.plex.agents.tpdb.movie</code></p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Cache Stats -->
+    <div class="bg-gray-800 rounded-lg p-6 border border-gray-700">
+        <h2 class="text-xl font-semibold text-purple-400 mb-4">Cache Statistics</h2>
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div class="bg-gray-700 rounded p-4 text-center">
+                <p class="text-3xl font-bold text-white">{{ cache_stats.total_entries }}</p>
+                <p class="text-gray-400 text-sm">Total Entries</p>
+            </div>
+            <div class="bg-gray-700 rounded p-4 text-center">
+                <p class="text-3xl font-bold text-green-400">{{ cache_stats.active_entries }}</p>
+                <p class="text-gray-400 text-sm">Active</p>
+            </div>
+            <div class="bg-gray-700 rounded p-4 text-center">
+                <p class="text-3xl font-bold text-yellow-400">{{ cache_stats.expired_entries }}</p>
+                <p class="text-gray-400 text-sm">Expired</p>
+            </div>
+            <div class="bg-gray-700 rounded p-4 text-center">
+                <p class="text-3xl font-bold text-blue-400">{{ cache_stats.total_hits }}</p>
+                <p class="text-gray-400 text-sm">Total Hits</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="bg-gray-800 rounded-lg p-6 border border-gray-700">
+        <h2 class="text-xl font-semibold text-purple-400 mb-4">Quick Actions</h2>
+        <div class="flex flex-wrap gap-4">
+            <a href="/admin/search"
+               class="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition">
+                Search TPDB
+            </a>
+            <a href="/admin/cache"
+               class="px-4 py-2 bg-gray-600 hover:bg-gray-500 text-white rounded-lg transition">
+                Manage Cache
+            </a>
+            <a href="/docs" target="_blank"
+               class="px-4 py-2 bg-gray-600 hover:bg-gray-500 text-white rounded-lg transition">
+                API Docs
+            </a>
+        </div>
+    </div>
+
+    <!-- Server Info -->
+    <div class="bg-gray-800 rounded-lg p-6 border border-gray-700">
+        <h2 class="text-xl font-semibold text-purple-400 mb-4">Server Information</h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+            <div>
+                <p class="text-gray-400">Host: <span class="text-white">{{ settings.provider_host }}:{{ settings.provider_port }}</span></p>
+                <p class="text-gray-400">Debug Mode: <span class="text-white">{{ 'Enabled' if settings.debug else 'Disabled' }}</span></p>
+            </div>
+            <div>
+                <p class="text-gray-400">TPDB Rate Limit: <span class="text-white">{{ settings.tpdb_rate_limit }} req/sec</span></p>
+                <p class="text-gray-400">Redis: <span class="text-white">{{ 'Connected' if settings.is_redis_configured else 'Not configured' }}</span></p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

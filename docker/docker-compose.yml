@@ -1,0 +1,42 @@
+version: '3.8'
+
+services:
+  tpdb-provider:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    container_name: tpdb-plex-provider
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      - TPDB_API_KEY=${TPDB_API_KEY}
+      - DATABASE_URL=sqlite+aiosqlite:///./data/tpdb_provider.db
+      - REDIS_URL=redis://redis:6379/0
+      - ADMIN_USERNAME=${ADMIN_USERNAME:-admin}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD:-changeme}
+      - DEBUG=false
+    volumes:
+      - tpdb-data:/app/data
+    depends_on:
+      - redis
+    networks:
+      - tpdb-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: tpdb-redis
+    restart: unless-stopped
+    volumes:
+      - redis-data:/data
+    networks:
+      - tpdb-network
+    command: redis-server --appendonly yes
+
+volumes:
+  tpdb-data:
+  redis-data:
+
+networks:
+  tpdb-network:
+    driver: bridge

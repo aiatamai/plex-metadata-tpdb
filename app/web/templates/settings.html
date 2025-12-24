@@ -1,0 +1,112 @@
+{% extends "base.html" %}
+
+{% block title %}Settings - TPDB Plex Provider{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <h1 class="text-3xl font-bold text-white">Settings</h1>
+
+    <!-- Server Settings -->
+    <div class="bg-gray-800 rounded-lg p-6 border border-gray-700">
+        <h2 class="text-xl font-semibold text-purple-400 mb-4">Server Configuration</h2>
+        <div class="space-y-4">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-400">Host</label>
+                    <p class="text-white bg-gray-700 rounded px-3 py-2 mt-1">{{ settings.provider_host }}</p>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-400">Port</label>
+                    <p class="text-white bg-gray-700 rounded px-3 py-2 mt-1">{{ settings.provider_port }}</p>
+                </div>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-400">Debug Mode</label>
+                <p class="text-white bg-gray-700 rounded px-3 py-2 mt-1">
+                    {{ 'Enabled' if settings.debug else 'Disabled' }}
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- TPDB Settings -->
+    <div class="bg-gray-800 rounded-lg p-6 border border-gray-700">
+        <h2 class="text-xl font-semibold text-purple-400 mb-4">ThePornDB API</h2>
+        <div class="space-y-4">
+            <div>
+                <label class="block text-sm font-medium text-gray-400">Base URL</label>
+                <p class="text-white bg-gray-700 rounded px-3 py-2 mt-1">{{ settings.tpdb_base_url }}</p>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-400">API Key</label>
+                <p class="text-white bg-gray-700 rounded px-3 py-2 mt-1">
+                    {% if settings.tpdb_api_key %}
+                    {{ settings.tpdb_api_key[:8] }}...{{ settings.tpdb_api_key[-4:] }}
+                    {% else %}
+                    <span class="text-red-400">Not configured</span>
+                    {% endif %}
+                </p>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-400">Rate Limit</label>
+                <p class="text-white bg-gray-700 rounded px-3 py-2 mt-1">{{ settings.tpdb_rate_limit }} requests/second</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Cache Settings -->
+    <div class="bg-gray-800 rounded-lg p-6 border border-gray-700">
+        <h2 class="text-xl font-semibold text-purple-400 mb-4">Cache TTL Settings</h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div>
+                <label class="block text-sm font-medium text-gray-400">Site List</label>
+                <p class="text-white bg-gray-700 rounded px-3 py-2 mt-1">{{ (settings.cache_ttl_site_list / 3600) | round(1) }} hours</p>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-400">Site Detail</label>
+                <p class="text-white bg-gray-700 rounded px-3 py-2 mt-1">{{ (settings.cache_ttl_site_detail / 86400) | round(1) }} days</p>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-400">Scene Search</label>
+                <p class="text-white bg-gray-700 rounded px-3 py-2 mt-1">{{ (settings.cache_ttl_scene_search / 60) | round(1) }} minutes</p>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-400">Scene Detail</label>
+                <p class="text-white bg-gray-700 rounded px-3 py-2 mt-1">{{ (settings.cache_ttl_scene_detail / 3600) | round(1) }} hours</p>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-400">Movie Detail</label>
+                <p class="text-white bg-gray-700 rounded px-3 py-2 mt-1">{{ (settings.cache_ttl_movie_detail / 3600) | round(1) }} hours</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Database Settings -->
+    <div class="bg-gray-800 rounded-lg p-6 border border-gray-700">
+        <h2 class="text-xl font-semibold text-purple-400 mb-4">Database</h2>
+        <div class="space-y-4">
+            <div>
+                <label class="block text-sm font-medium text-gray-400">Database URL</label>
+                <p class="text-white bg-gray-700 rounded px-3 py-2 mt-1 font-mono text-sm break-all">{{ settings.database_url }}</p>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-400">Redis</label>
+                <p class="text-white bg-gray-700 rounded px-3 py-2 mt-1">
+                    {% if settings.redis_url %}
+                    {{ settings.redis_url }}
+                    {% else %}
+                    <span class="text-yellow-400">Not configured (using in-memory cache)</span>
+                    {% endif %}
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <div class="bg-gray-800 rounded-lg p-6 border border-gray-700">
+        <p class="text-gray-400 text-sm">
+            Settings are read from environment variables or <code class="bg-gray-700 px-1 rounded">.env</code> file.
+            Restart the server after making changes.
+        </p>
+    </div>
+</div>
+{% endblock %}
