@@ -1,0 +1,648 @@
+{
+  "name": "Plex ThePornDB Provider API",
+  "description": "A Plex Media Provider that integrates with ThePornDB to provide metadata for adult content in Plex Media Server. Supports TV shows (sites as shows, scenes as episodes) and movies with comprehensive search, caching, and rate limiting.",
+  "version": "1.0.0",
+  "baseURL": "http://localhost:8000",
+  "auth": {
+    "type": "http",
+    "scheme": "basic",
+    "description": "HTTP Basic Authentication for admin endpoints",
+    "username_env": "ADMIN_USERNAME",
+    "password_env": "ADMIN_PASSWORD"
+  },
+  "endpoints": {
+    "provider_definition": {
+      "tv": {
+        "method": "GET",
+        "path": "/tv",
+        "description": "Get TV provider definition and capabilities",
+        "authentication": "none",
+        "response": {
+          "type": "xml",
+          "contentType": "application/xml"
+        },
+        "tags": ["Provider Definition"],
+        "category": "TV Provider"
+      },
+      "movie": {
+        "method": "GET",
+        "path": "/movie",
+        "description": "Get Movie provider definition and capabilities",
+        "authentication": "none",
+        "response": {
+          "type": "xml",
+          "contentType": "application/xml"
+        },
+        "tags": ["Provider Definition"],
+        "category": "Movie Provider"
+      }
+    },
+    "tv_provider": {
+      "match": {
+        "method": "POST",
+        "path": "/tv/library/metadata/matches",
+        "description": "Match shows, seasons, or episodes against ThePornDB",
+        "authentication": "none",
+        "parameters": {
+          "type": {
+            "type": "integer",
+            "description": "Metadata type: 2=show, 3=season, 4=episode",
+            "required": true,
+            "enum": [2, 3, 4]
+          },
+          "title": {
+            "type": "string",
+            "description": "Title to match",
+            "required": true,
+            "maxLength": 500
+          },
+          "year": {
+            "type": "integer",
+            "description": "Release year",
+            "required": false
+          },
+          "grandparentTitle": {
+            "type": "string",
+            "description": "Parent show name",
+            "required": false
+          },
+          "parentIndex": {
+            "type": "integer",
+            "description": "Season index (year for this provider)",
+            "required": false
+          },
+          "index": {
+            "type": "integer",
+            "description": "Episode index",
+            "required": false
+          },
+          "date": {
+            "type": "string",
+            "format": "date",
+            "description": "Release date (YYYY-MM-DD)",
+            "required": false
+          },
+          "guid": {
+            "type": "string",
+            "description": "Previous match GUID (format: tpdb://uuid)",
+            "required": false
+          }
+        },
+        "response": {
+          "type": "json",
+          "schema": {
+            "type": "object",
+            "properties": {
+              "MediaContainer": {
+                "type": "object",
+                "properties": {
+                  "offset": { "type": "integer" },
+                  "totalSize": { "type": "integer" },
+                  "identifier": { "type": "string" },
+                  "size": { "type": "integer" },
+                  "Metadata": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "key": { "type": "string" },
+                        "type": { "type": "string", "enum": ["show", "season", "episode"] },
+                        "title": { "type": "string" },
+                        "summary": { "type": "string" },
+                        "thumb": { "type": "string", "format": "uri" },
+                        "art": { "type": "string", "format": "uri" },
+                        "year": { "type": "integer" }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": ["Matching"],
+        "category": "TV Provider",
+        "example": {
+          "request": {
+            "type": 4,
+            "title": "Brazzers Scene",
+            "grandparentTitle": "Brazzers",
+            "date": "2024-01-15"
+          },
+          "response": {
+            "MediaContainer": {
+              "offset": 0,
+              "totalSize": 5,
+              "identifier": "tv.plex.agents.tpdb.tv",
+              "size": 5,
+              "Metadata": [
+                {
+                  "key": "tpdb-scene-uuid-123",
+                  "type": "episode",
+                  "title": "Scene Title",
+                  "summary": "Scene description",
+                  "thumb": "https://example.com/thumb.jpg",
+                  "year": 2024
+                }
+              ]
+            }
+          }
+        }
+      },
+      "metadata": {
+        "method": "GET",
+        "path": "/tv/library/metadata/{rating_key}",
+        "description": "Get metadata for a specific item",
+        "authentication": "none",
+        "parameters": {
+          "rating_key": {
+            "type": "string",
+            "description": "Item identifier (e.g., tpdb-site-brazzers)",
+            "required": true,
+            "in": "path"
+          },
+          "X-Plex-Language": {
+            "type": "string",
+            "description": "Preferred language",
+            "required": false,
+            "in": "header",
+            "default": "en"
+          }
+        },
+        "response": {
+          "type": "json"
+        },
+        "tags": ["Metadata Retrieval"],
+        "category": "TV Provider"
+      },
+      "children": {
+        "method": "GET",
+        "path": "/tv/library/metadata/{rating_key}/children",
+        "description": "Get children (seasons or episodes) of an item",
+        "authentication": "none",
+        "parameters": {
+          "rating_key": {
+            "type": "string",
+            "description": "Parent item ID",
+            "required": true,
+            "in": "path"
+          },
+          "X-Plex-Container-Start": {
+            "type": "integer",
+            "description": "Pagination offset",
+            "required": false,
+            "in": "header",
+            "default": 0
+          },
+          "X-Plex-Container-Size": {
+            "type": "integer",
+            "description": "Results per page",
+            "required": false,
+            "in": "header",
+            "default": 50
+          }
+        },
+        "response": {
+          "type": "json"
+        },
+        "tags": ["Hierarchy Navigation"],
+        "category": "TV Provider"
+      }
+    },
+    "movie_provider": {
+      "match": {
+        "method": "POST",
+        "path": "/movie/library/metadata/matches",
+        "description": "Match movies against ThePornDB",
+        "authentication": "none",
+        "parameters": {
+          "type": {
+            "type": "integer",
+            "description": "Metadata type: 1=movie",
+            "required": true,
+            "enum": [1]
+          },
+          "title": {
+            "type": "string",
+            "description": "Movie title to match",
+            "required": true
+          },
+          "year": {
+            "type": "integer",
+            "description": "Release year",
+            "required": false
+          },
+          "guid": {
+            "type": "string",
+            "description": "Previous match GUID",
+            "required": false
+          }
+        },
+        "response": {
+          "type": "json"
+        },
+        "tags": ["Matching"],
+        "category": "Movie Provider"
+      },
+      "metadata": {
+        "method": "GET",
+        "path": "/movie/library/metadata/{rating_key}",
+        "description": "Get movie metadata",
+        "authentication": "none",
+        "parameters": {
+          "rating_key": {
+            "type": "string",
+            "description": "Movie identifier",
+            "required": true,
+            "in": "path"
+          }
+        },
+        "response": {
+          "type": "json"
+        },
+        "tags": ["Metadata Retrieval"],
+        "category": "Movie Provider"
+      }
+    },
+    "admin": {
+      "search": {
+        "method": "GET",
+        "path": "/admin/api/search",
+        "description": "Search ThePornDB for content",
+        "authentication": "basic",
+        "parameters": {
+          "q": {
+            "type": "string",
+            "description": "Search query",
+            "required": true,
+            "minLength": 1,
+            "maxLength": 255,
+            "in": "query"
+          },
+          "type": {
+            "type": "string",
+            "description": "Search type",
+            "required": false,
+            "enum": ["scenes", "sites", "movies", "performers"],
+            "default": "scenes",
+            "in": "query"
+          }
+        },
+        "response": {
+          "type": "json",
+          "schema": {
+            "type": "object",
+            "properties": {
+              "data": {
+                "type": "array",
+                "description": "Search results"
+              },
+              "count": {
+                "type": "integer",
+                "description": "Number of results"
+              },
+              "type": {
+                "type": "string",
+                "description": "Search type used"
+              }
+            }
+          }
+        },
+        "tags": ["Search", "Admin"],
+        "category": "Admin",
+        "example": {
+          "request": {
+            "q": "brazzers",
+            "type": "sites"
+          },
+          "response": {
+            "data": [
+              {
+                "id": "site-uuid",
+                "name": "Brazzers",
+                "slug": "brazzers",
+                "description": "Studio description",
+                "logo": "https://example.com/logo.png",
+                "type": "site"
+              }
+            ],
+            "count": 1,
+            "type": "sites"
+          }
+        }
+      },
+      "dashboard": {
+        "method": "GET",
+        "path": "/admin",
+        "description": "Admin dashboard with cache statistics",
+        "authentication": "basic",
+        "response": {
+          "type": "html"
+        },
+        "tags": ["Admin Interface"],
+        "category": "Admin"
+      },
+      "cache": {
+        "method": "GET",
+        "path": "/admin/cache",
+        "description": "Cache management interface",
+        "authentication": "basic",
+        "response": {
+          "type": "html"
+        },
+        "tags": ["Admin Interface"],
+        "category": "Admin"
+      },
+      "cache_clear": {
+        "method": "POST",
+        "path": "/admin/cache/clear",
+        "description": "Clear cache entries",
+        "authentication": "basic",
+        "parameters": {
+          "endpoint": {
+            "type": "string",
+            "description": "Cache endpoint to clear (optional, all if omitted)",
+            "required": false,
+            "in": "form"
+          }
+        },
+        "response": {
+          "type": "redirect",
+          "redirectTo": "/admin/cache"
+        },
+        "tags": ["Admin Operations"],
+        "category": "Admin"
+      },
+      "cache_clear_expired": {
+        "method": "POST",
+        "path": "/admin/cache/clear-expired",
+        "description": "Clear expired cache entries",
+        "authentication": "basic",
+        "response": {
+          "type": "redirect",
+          "redirectTo": "/admin/cache"
+        },
+        "tags": ["Admin Operations"],
+        "category": "Admin"
+      }
+    },
+    "system": {
+      "health": {
+        "method": "GET",
+        "path": "/health",
+        "description": "Health check endpoint",
+        "authentication": "none",
+        "response": {
+          "type": "json",
+          "schema": {
+            "type": "object",
+            "properties": {
+              "status": { "type": "string" },
+              "service": { "type": "string" }
+            }
+          }
+        },
+        "tags": ["Health"],
+        "category": "System"
+      },
+      "docs": {
+        "method": "GET",
+        "path": "/docs",
+        "description": "Interactive API documentation (debug mode only)",
+        "authentication": "none",
+        "response": {
+          "type": "html"
+        },
+        "tags": ["Documentation"],
+        "category": "System"
+      }
+    }
+  },
+  "errorCodes": {
+    "400": {
+      "description": "Bad Request",
+      "examples": [
+        "Invalid search type",
+        "Missing required parameter",
+        "Invalid parameter format"
+      ]
+    },
+    "401": {
+      "description": "Unauthorized",
+      "examples": [
+        "Missing authentication",
+        "Invalid credentials"
+      ]
+    },
+    "404": {
+      "description": "Not Found",
+      "examples": [
+        "Resource not found on TPDB",
+        "Item not found"
+      ]
+    },
+    "429": {
+      "description": "Too Many Requests",
+      "examples": [
+        "Rate limit exceeded on TPDB"
+      ]
+    },
+    "500": {
+      "description": "Internal Server Error",
+      "examples": [
+        "TPDB API error",
+        "Unexpected server error"
+      ]
+    }
+  },
+  "rateLimit": {
+    "outgoing": {
+      "description": "Rate limit for requests to TPDB API",
+      "algorithm": "Token Bucket",
+      "requestsPerSecond": 2,
+      "burstSize": 5,
+      "configurable": true,
+      "configParameter": "TPDB_RATE_LIMIT"
+    },
+    "incoming": {
+      "description": "Rate limit for requests to this API",
+      "default": "100 requests per minute",
+      "search": "30 requests per minute"
+    }
+  },
+  "caching": {
+    "enabled": true,
+    "tiers": [
+      {
+        "name": "Memory Cache",
+        "type": "in-process",
+        "ttl": "5 minutes",
+        "responseTime": "5-10ms"
+      },
+      {
+        "name": "Database Cache",
+        "type": "persistent",
+        "ttl": "configurable per endpoint",
+        "responseTime": "50-100ms"
+      }
+    ],
+    "ttls": {
+      "site_list": "24 hours",
+      "site_detail": "7 days",
+      "scene_search": "5 minutes",
+      "scene_detail": "24 hours",
+      "movie_detail": "24 hours"
+    }
+  },
+  "authentication": {
+    "provider_api": {
+      "type": "none",
+      "description": "TV and Movie provider endpoints are called by Plex without authentication"
+    },
+    "admin_api": {
+      "type": "http_basic",
+      "username": "ADMIN_USERNAME",
+      "password": "ADMIN_PASSWORD",
+      "description": "Admin endpoints require HTTP Basic authentication"
+    },
+    "tpdb_api": {
+      "type": "bearer_token",
+      "token": "TPDB_API_KEY",
+      "description": "Backend authenticates with ThePornDB using API key (not exposed to client)"
+    }
+  },
+  "webhooks": {
+    "enabled": false,
+    "description": "This is a pull-based API. Plex initiates all communication. No webhooks or callbacks."
+  },
+  "limits": {
+    "maxQueryLength": 255,
+    "maxTitleLength": 500,
+    "resultsPerPage": 25,
+    "maxResults": 25,
+    "paginationMaxOffset": 1000
+  },
+  "contentMapping": {
+    "tv": {
+      "ThePornDB": "Plex",
+      "Site": "Show",
+      "Scene": "Episode",
+      "Release Year": "Season",
+      "Performer": "Actor"
+    },
+    "movie": {
+      "ThePornDB": "Plex",
+      "Movie": "Movie",
+      "Studio": "Production Company",
+      "Performer": "Actor",
+      "Director": "Director"
+    }
+  },
+  "searchTypes": {
+    "scenes": {
+      "description": "Search for individual video scenes",
+      "method": "client.search_scenes()",
+      "returns": ["id", "title", "date", "description", "image", "poster", "site", "performers"]
+    },
+    "sites": {
+      "description": "Search for studios/production companies",
+      "method": "client.search_sites()",
+      "returns": ["id", "name", "slug", "description", "logo", "poster"]
+    },
+    "movies": {
+      "description": "Search for full-length movies",
+      "method": "client.search_movies()",
+      "returns": ["id", "title", "year", "date", "description", "image", "poster", "studio", "performers"]
+    },
+    "performers": {
+      "description": "Search for adult performers",
+      "method": "client.search_performers()",
+      "returns": ["id", "name", "slug", "bio", "image", "gender", "birthdate"]
+    }
+  },
+  "environmentVariables": {
+    "TPDB_API_KEY": {
+      "description": "ThePornDB API key",
+      "required": true,
+      "type": "string"
+    },
+    "TPDB_BASE_URL": {
+      "description": "ThePornDB API base URL",
+      "required": false,
+      "type": "string",
+      "default": "https://api.theporndb.net"
+    },
+    "TPDB_RATE_LIMIT": {
+      "description": "Rate limit for TPDB requests (requests per second)",
+      "required": false,
+      "type": "float",
+      "default": 2.0
+    },
+    "DATABASE_URL": {
+      "description": "Database connection string",
+      "required": false,
+      "type": "string",
+      "default": "sqlite+aiosqlite:///./data/tpdb_provider.db"
+    },
+    "REDIS_URL": {
+      "description": "Redis connection string (optional, uses in-memory cache if not set)",
+      "required": false,
+      "type": "string"
+    },
+    "PROVIDER_HOST": {
+      "description": "Host to bind to",
+      "required": false,
+      "type": "string",
+      "default": "0.0.0.0"
+    },
+    "PROVIDER_PORT": {
+      "description": "Port to listen on",
+      "required": false,
+      "type": "integer",
+      "default": 8000
+    },
+    "DEBUG": {
+      "description": "Enable debug mode",
+      "required": false,
+      "type": "boolean",
+      "default": false
+    },
+    "ADMIN_USERNAME": {
+      "description": "Admin dashboard username",
+      "required": false,
+      "type": "string",
+      "default": "admin"
+    },
+    "ADMIN_PASSWORD": {
+      "description": "Admin dashboard password",
+      "required": false,
+      "type": "string",
+      "default": "change_me_in_production"
+    }
+  },
+  "performanceMetrics": {
+    "responseTime": {
+      "cache_hit_memory": "5-10ms",
+      "cache_hit_database": "50-100ms",
+      "api_call": "1-2 seconds",
+      "rate_limited": "varies based on queue"
+    },
+    "throughput": {
+      "single_instance": "100-200 concurrent requests",
+      "with_redis": "scales horizontally"
+    }
+  },
+  "documentation": {
+    "api": "API.md",
+    "codebase": "CODEBASE_EXPLANATION.md",
+    "quickStart": "QUICK_REFERENCE.md",
+    "searchFix": "ADMIN_SEARCH_FIX.md",
+    "searchTesting": "SEARCH_TESTING_GUIDE.md"
+  },
+  "links": {
+    "theporndb": "https://theporndb.net",
+    "theporndb_api": "https://api.theporndb.net",
+    "plex": "https://plex.tv",
+    "fastapi": "https://fastapi.tiangolo.com"
+  }
+}
